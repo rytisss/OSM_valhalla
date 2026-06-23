@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Valhalla data: downloaded PBF + built tiles (large, regenerate via scripts).
+custom_files/

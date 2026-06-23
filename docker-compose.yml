@@ -1,0 +1,25 @@
+services:
+  valhalla:
+    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    container_name: valhalla-usa
+    restart: unless-stopped
+    ports:
+      - "${VALHALLA_PORT:-8002}:8002"
+    volumes:
+      # PBF + built tiles persist here across restarts and rebuilds.
+      - ./custom_files:/custom_files
+    environment:
+      # Always serve the HTTP API.
+      server_threads: 4
+      serve_tiles: "True"
+      # Map source — only used when a build is actually triggered.
+      tile_urls: "${PBF_URL:-https://download.geofabrik.de/north-america/us-latest.osm.pbf}"
+      # Build features.
+      build_elevation: "${BUILD_ELEVATION:-False}"
+      build_admins: "${BUILD_ADMINS:-True}"
+      build_time_zones: "${BUILD_TIME_ZONES:-True}"
+      build_tar: "True"
+      # Runtime mode. Defaults = serve cached tiles, no download/rebuild.
+      # build.sh / rebuild.sh override FORCE_REBUILD / USE_TILES_IGNORE_PBF.
+      force_rebuild: "${FORCE_REBUILD:-False}"
+      use_tiles_ignore_pbf: "${USE_TILES_IGNORE_PBF:-True}"
