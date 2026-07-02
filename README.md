@@ -63,6 +63,17 @@ Other endpoints: `/route`, `/sources_to_targets` (matrix), `/isochrone`,
 `/optimized_route`. Pass `"costing":"truck"` plus optional
 `costing_options.truck` (height, weight, axle_load, length, width, hazmat).
 
+## Packaging
+
+The service image is published to this repo's GitHub Container Registry as
+`ghcr.io/rytisss/osm_valhalla` by `.github/workflows/docker-publish.yml`
+— a thin wrapper pinning `gis-ops/docker-valhalla` (see `Dockerfile`). It is
+rebuilt on every push to `main`, on `v*` tags, and via manual dispatch.
+
+After the **first** publish, make the package public (repo → Packages →
+package settings → visibility), or `docker compose pull` will need a GHCR
+login. To run against upstream instead, set `VALHALLA_IMAGE` in `.env`.
+
 ## Requirements / notes
 
 - First build needs **~100+ GB free disk**, several GB RAM, and a few hours.
