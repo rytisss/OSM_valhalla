@@ -1,6 +1,8 @@
 services:
   valhalla:
-    image: ghcr.io/gis-ops/docker-valhalla/valhalla:latest
+    # This repo's own package (built by .github/workflows/docker-publish.yml,
+    # a pinned wrapper of gis-ops/docker-valhalla). Override with VALHALLA_IMAGE.
+    image: "${VALHALLA_IMAGE:-ghcr.io/rytisss/osm_valhalla:latest}"
     container_name: valhalla-usa
     restart: unless-stopped
     ports:
