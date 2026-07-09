@@ -18,19 +18,28 @@ ARG VALHALLA_VERSION=3.5.1
 FROM ghcr.io/gis-ops/docker-valhalla/valhalla:${VALHALLA_VERSION} AS builder
 
 ARG PBF_URL=https://download.geofabrik.de/north-america/us-latest.osm.pbf
+# Tile-builder thread count. Empty = all cores (fast, high peak RAM). Set to 1
+# to build single-threaded, which keeps peak memory low enough for a big extract
+# (e.g. USA) on a memory-constrained machine — much slower, but it fits.
+ARG CONCURRENCY=
 
 USER root
 WORKDIR /custom_files
 
-# admin_data / timezone_data hold sqlite side-inputs referenced by the config.
+# Download the extract in its own layer so a failed build doesn't re-download.
 RUN set -eux; \
     mkdir -p /custom_files/admin_data /custom_files/timezone_data; \
-    curl -fSL --retry 3 -o /custom_files/data.osm.pbf "${PBF_URL}"; \
+    curl -fSL --retry 3 -o /custom_files/data.osm.pbf "${PBF_URL}"
+
+# Build the graph + tar. Concurrency is baked into the config, so every
+# build_* step below honours it.
+RUN set -eux; \
     valhalla_build_config \
       --mjolnir-tile-dir /custom_files/valhalla_tiles \
       --mjolnir-tile-extract /custom_files/valhalla_tiles.tar \
       --mjolnir-timezone /custom_files/timezone_data/timezones.sqlite \
       --mjolnir-admin /custom_files/admin_data/admins.sqlite \
+      ${CONCURRENCY:+--mjolnir-concurrency ${CONCURRENCY}} \
       > /custom_files/valhalla.json; \
     valhalla_build_timezones > /custom_files/timezone_data/timezones.sqlite; \
     valhalla_build_admins -c /custom_files/valhalla.json /custom_files/data.osm.pbf; \
