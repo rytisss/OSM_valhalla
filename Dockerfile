@@ -53,6 +53,9 @@ RUN set -eux; \
 # --------------------------------------------------------------------------- #
 FROM ghcr.io/gis-ops/docker-valhalla/valhalla:${VALHALLA_VERSION}
 
+# Links the published GHCR package to this repo (shows under the repo's Packages).
+LABEL org.opencontainers.image.source="https://github.com/rytisss/OSM-valhalla"
+
 # The container runs as uid/gid 59999; own the baked files accordingly.
 COPY --from=builder --chown=59999:59999 /custom_files /custom_files
 
