@@ -4,12 +4,13 @@ Self-hosted [Valhalla](https://github.com/valhalla/valhalla) routing engine
 covering the continental USA, served at `http://localhost:8002`. Supports
 auto, truck, bicycle, and pedestrian costing. Queryable by any local script.
 
-## Three actions
+## Actions
 
 | Action | Command | Effect |
 |--------|---------|--------|
-| **Serve** (default) | `docker compose up -d` | Serves cached tiles **(after the initial build)**. No download, no rebuild. Instant. |
-| **Build** (once) | `scripts/build.sh` | Downloads the USA PBF and builds tiles. Hours; ~100+ GB disk. |
+| **Pull** (tiles baked in) | `docker pull ghcr.io/rytisss/osm_valhalla` | Ready-to-route image — graph is baked in at build time. No mount, no build. See [Packaging](#packaging--tiles-baked-into-the-image). |
+| **Serve** (local tiles) | `docker compose up -d` | Serves cached tiles from a mounted `custom_files/` **(after a local build)**. No download, no rebuild. |
+| **Build** (once) | `scripts/build.sh` | Downloads the USA PBF and builds tiles locally. Hours; ~100+ GB disk. |
 | **Rebuild** (on demand) | `scripts/rebuild.sh` | Clears cache, fetches the **newest** map, rebuilds. |
 
 After the initial build, nothing downloads or rebuilds automatically — you are always the trigger. **Run `scripts/build.sh` before your first `docker compose up`**: an `up` with no tiles present will auto-download and build (hours).
@@ -63,16 +64,37 @@ Other endpoints: `/route`, `/sources_to_targets` (matrix), `/isochrone`,
 `/optimized_route`. Pass `"costing":"truck"` plus optional
 `costing_options.truck` (height, weight, axle_load, length, width, hazmat).
 
-## Packaging
+## Packaging — tiles baked into the image
 
-The service image is published to this repo's GitHub Container Registry as
-`ghcr.io/rytisss/osm_valhalla` by `.github/workflows/docker-publish.yml`
-— a thin wrapper pinning `gis-ops/docker-valhalla` (see `Dockerfile`). It is
-rebuilt on every push to `main`, on `v*` tags, and via manual dispatch.
+The image published to GHCR as `ghcr.io/rytisss/osm_valhalla` now **bakes the
+routing graph in** (see `Dockerfile`): a multi-stage build downloads an OSM
+extract, builds the tiles + `valhalla_tiles.tar`, and copies them into the
+final image. Consumers `docker pull` a **ready-to-route** image — no volume,
+no download, no build at deploy time. `.github/workflows/docker-publish.yml`
+publishes it on push to `main`, on `v*` tags, and via manual dispatch.
+
+The extract is chosen by the `PBF_URL` build-arg (default: continental USA):
+
+```bash
+# Bake a small region (fast, fits any machine):
+docker build --build-arg PBF_URL=https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf -t osm_valhalla:dc .
+docker run --rm -p 8002:8002 osm_valhalla:dc     # routes immediately, no mount
+```
+
+> ⚠️ **The graph is built during `docker build`, so the builder needs the
+> resources.** Continental USA needs **~100 GB disk, lots of RAM, and hours** —
+> it will **not** build on a GitHub-hosted runner. For USA, run the workflow on
+> a **self-hosted/large runner**, or build & push locally. Use the
+> `workflow_dispatch` `pbf_url` input to bake a smaller region on hosted CI.
+> Images are `linux/amd64`; arm64 hosts run them via emulation.
 
 After the **first** publish, make the package public (repo → Packages →
 package settings → visibility), or `docker compose pull` will need a GHCR
 login. To run against upstream instead, set `VALHALLA_IMAGE` in `.env`.
+
+Because tiles live in the image, a consumer that mounts a volume over
+`/custom_files` should use a **fresh** one (an empty named volume is populated
+from the image; a stale/empty bind mount would shadow the baked tiles).
 
 ## Requirements / notes
 
