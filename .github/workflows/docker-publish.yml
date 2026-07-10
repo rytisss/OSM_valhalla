@@ -1,20 +1,20 @@
 name: Publish Docker image
 
+# MANUAL ONLY — deliberately NOT triggered by push/tags.
+#
+# The image builds the routing graph at image-build time (see Dockerfile), so a
+# full-USA build needs ~100 GB disk + lots of RAM + hours and will NOT fit on a
+# GitHub-hosted runner. Publishing USA is done by building on a capable machine
+# (e.g. a dev box) and `docker push`-ing the result — CI auto-building on every
+# push would just fail. Use this dispatch only for a small regional `pbf_url`,
+# or point it at a self-hosted/large runner.
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       pbf_url:
         description: "OSM extract to bake into the image (Geofabrik .osm.pbf URL)"
         required: false
         default: "https://download.geofabrik.de/north-america/us-latest.osm.pbf"
-
-# NOTE: the image now BUILDS THE ROUTING GRAPH at image-build time (see
-# Dockerfile). Continental USA needs ~100 GB disk + lots of RAM + hours and will
-# NOT fit on a GitHub-hosted runner — run this on a self-hosted/large runner for
-# USA, or dispatch with a smaller regional `pbf_url`.
 
 env:
   REGISTRY: ghcr.io
