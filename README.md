@@ -8,7 +8,7 @@ auto, truck, bicycle, and pedestrian costing. Queryable by any local script.
 
 | Action | Command | Effect |
 |--------|---------|--------|
-| **Pull** (tiles baked in) | `docker pull ghcr.io/rytisss/osm_valhalla` | Ready-to-route image — graph is baked in at build time. No mount, no build. See [Packaging](#packaging--tiles-baked-into-the-image). |
+| **Pull** (tiles baked in) | `docker pull ghcr.io/rytisss/osm-valhalla` | Ready-to-route image — graph is baked in at build time. No mount, no build. See [Packaging](#packaging--tiles-baked-into-the-image). |
 | **Serve** (local tiles) | `docker compose up -d` | Serves cached tiles from a mounted `custom_files/` **(after a local build)**. No download, no rebuild. |
 | **Build** (once) | `scripts/build.sh` | Downloads the USA PBF and builds tiles locally. Hours; ~100+ GB disk. |
 | **Rebuild** (on demand) | `scripts/rebuild.sh` | Clears cache, fetches the **newest** map, rebuilds. |
@@ -66,19 +66,21 @@ Other endpoints: `/route`, `/sources_to_targets` (matrix), `/isochrone`,
 
 ## Packaging — tiles baked into the image
 
-The image published to GHCR as `ghcr.io/rytisss/osm_valhalla` now **bakes the
+The image published to GHCR as `ghcr.io/rytisss/osm-valhalla` now **bakes the
 routing graph in** (see `Dockerfile`): a multi-stage build downloads an OSM
 extract, builds the tiles + `valhalla_tiles.tar`, and copies them into the
 final image. Consumers `docker pull` a **ready-to-route** image — no volume,
 no download, no build at deploy time. `.github/workflows/docker-publish.yml`
-publishes it on push to `main`, on `v*` tags, and via manual dispatch.
+publishes via **manual dispatch only** (auto-building on push would try to
+build USA on a hosted runner and fail — publish USA by building locally and
+`docker push`).
 
 The extract is chosen by the `PBF_URL` build-arg (default: continental USA):
 
 ```bash
 # Bake a small region (fast, fits any machine):
-docker build --build-arg PBF_URL=https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf -t osm_valhalla:dc .
-docker run --rm -p 8002:8002 osm_valhalla:dc     # routes immediately, no mount
+docker build --build-arg PBF_URL=https://download.geofabrik.de/north-america/us/district-of-columbia-latest.osm.pbf -t osm-valhalla:dc .
+docker run --rm -p 8002:8002 osm-valhalla:dc     # routes immediately, no mount
 ```
 
 > ⚠️ **The graph is built during `docker build`, so the builder needs the
